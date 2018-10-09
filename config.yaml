@@ -1,0 +1,17 @@
+#albacore parameters
+FLOWCELL: "FLO-MIN106"
+KIT: "SQK-RBK004"
+ALBACORE_VERSION: "2.3.3" #available versions : 2.3.0 , 2.3.1 , 2.3.3
+ALBACORE_THREADS: 8
+#input base directory of raw fast5 files from MiniKnow
+INPUTDIR: "test/fast5"
+OUTPUTDIR: 'miniontoolkit-output'
+TMPDIR: '/tmp'
+
+TARRED_READS: True
+
+#General script parameters
+# Cleanup individual albacore runs on sucessfully completion?
+CLEANUP: False
+# Delete fail/*.fastq files from final results?
+DELETE_FAILED: False

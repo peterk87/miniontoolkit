@@ -1,0 +1,49 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+
+description: "Snakemake configuration file for miniontoolkit"
+
+type: object
+
+properties:
+  FLOWCELL:
+    type: string
+    description: "ONT MinION flowcell name."
+  KIT:
+    type: string
+    description: "Barcoding library kit name."
+  ALBACORE_VERSION:
+    type: string
+    enum: ["2.3.3", "2.3.1", "2.3.0"]
+    description: "Albacore version (e.g. '2.3.3')"
+  ALBACORE_THREADS:
+    type: integer
+    minimum: 1
+  INPUTDIR:
+    type: string
+    description: "Input directory path."
+  OUTPUTDIR:
+    type: string
+    description: "Output directory path."
+  TARRED_READS:
+    type: boolean
+    description: "Are fast5 read folders tarred? i.e. 0.tar, 1.tar ... N.tar"
+  TMPDIR:
+    type: string
+    description: "Temporary file directory"
+  CLEANUP:
+    type: boolean
+    description: "Cleanup individual albacore runs on sucessfully completion?"
+  DELETE_FAILED:
+    type: boolean
+    description: "Delete fail/*.fastq files from final results?"
+
+required:
+  - FLOWCELL
+  - KIT
+  - ALBACORE_VERSION
+  - INPUTDIR
+  - OUTPUTDIR
+  - TMPDIR
+  - TARRED_READS
+  - CLEANUP
+  - DELETE_FAILED
