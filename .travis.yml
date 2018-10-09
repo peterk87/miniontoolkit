@@ -15,5 +15,5 @@ install:
   - conda install snakemake
 
 script:
-  - snakemake --use-conda --config BASEDIR=test/fast5 TARRED_READS=False
-  - snakemake --use-conda --config BASEDIR=test/fast5 TARRED_READS=True
+  - snakemake --use-conda --config BASEDIR=test/fast5 OUTPUTDIR=not-tarred TARRED_READS=False
+  - snakemake --use-conda --config BASEDIR=test/fast5 OUTPUTDIR=tarred TARRED_READS=True
