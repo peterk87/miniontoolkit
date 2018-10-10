@@ -55,51 +55,57 @@ rule aggregate_results:
                              run_health=output.health,
                              deletefailed=DELETE_FAILED)
 
-
-rule albacore:
-    input:
-        os.path.join(TMPDIR, '{fast5_dir}')
-    output:
-        dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
-        done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
-    threads: ALBACORE_THREADS
-    benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
-    log:
-        os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
-    conda:
-        "envs/albacore-%s.yml" % (ALBACORE_VERSION)
-    version:
-        ALBACORE_VERSION
-    shell:
-        'read_fast5_basecaller.py '
-        '--input {input} '
-        '--flowcell {FLOWCELL} '
-        '--kit {KIT} '
-        '--barcoding '
-        '--recursive '
-        '--output_format fast5,fastq '
-        '--save_path {output.dir} '
-        '--disable_pings '
-        '-q 999999999 '
-        '--worker_threads {threads} '
-        '> {log} 2>&1'
-
-
-rule to_tmp_dir:
-    input:
-        lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
-    output:
-        temp(directory(os.path.join(TMPDIR, '{fast5_dir}')))
-    resources:
-        # limit number of read directories being extracted to your temp folder at the same time
-        tmp_limit=1
-    run:
-        if TARRED_READS:
-            shell('mkdir -p {output}')
-            shell('tar -C {output} -xf {input}')
-        else:
-            shell('ln -s {input} {output}')
-
+if TARRED_READS:
+    rule albacore_on_tarred_reads:
+        input:
+            lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
+        output:
+            dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
+            done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
+        threads: ALBACORE_THREADS
+        benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
+        log:
+            os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
+        conda:
+            "envs/albacore-%s.yml" % (ALBACORE_VERSION)
+        version:
+            ALBACORE_VERSION
+        shell:
+            """
+            mkdir -p {TMPDIR}/{wildcards.fast5_dir}
+            tar -C {TMPDIR}/{wildcards.fast5_dir} -xf {input}
+            read_fast5_basecaller.py \
+              --input {TMPDIR}/{wildcards.fast5_dir} \
+              --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
+              --output_format fast5,fastq \
+              --save_path {output.dir} \
+              --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
+            rm -r {TMPDIR}/{wildcards.fast5_dir}
+            """
+else:
+    rule albacore:
+        input:
+            lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
+        output:
+            dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
+            done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
+        threads: ALBACORE_THREADS
+        benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
+        log:
+            os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
+        conda:
+            "envs/albacore-%s.yml" % (ALBACORE_VERSION)
+        version:
+            ALBACORE_VERSION
+        shell:
+            """
+            read_fast5_basecaller.py \
+              --input {input} \
+              --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
+              --output_format fast5,fastq \
+              --save_path {output.dir} \
+              --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
+            """
 
 onsuccess:
     if CLEANUP:
