@@ -10,12 +10,12 @@ configfile: 'config.yaml'
 validate(config, schema='schema/config.schema.yaml')
 
 timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%s')
-print(config)
 
 #fetch parameters that are specifc to this minion run
 INPUTDIR = config['INPUTDIR']
 OUTPUTDIR = config['OUTPUTDIR']
 TMPDIR = config['TMPDIR']
+#TODO: add timestamp to tmp dir
 # TMPDIR = os.path.join(TMPDIR, f'{timestamp}-miniontoolkit')
 TARRED_READS = config['TARRED_READS']
 
@@ -35,9 +35,6 @@ FAST5_DIR_PATHS = [os.path.abspath(f) for f in glob(os.path.join(INPUTDIR, '*.ta
 
 FAST5_DIRS = {os.path.basename(x).replace('.tar', '') if TARRED_READS else os.path.basename(x): x for x in FAST5_DIR_PATHS}
 
-print(FAST5_DIR_PATHS)
-print(FAST5_DIRS)
-
 rule all:
     input:
         expand(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'), fast5_dir=FAST5_DIRS.keys()),
@@ -47,11 +44,9 @@ rule all:
 rule aggregate_results:
     input:
         expand(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}'), fast5_dir=FAST5_DIRS.keys())
-        # expand(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}'), fast5_dir=FAST5_DIRS.keys())
     output:
         ss=os.path.join(OUTPUTDIR, 'results', 'sequencing_summary.txt'), #combine all albacore runs into a SINGLE sequencing_summary.txt
         health=os.path.join(OUTPUTDIR, 'results', 'run_health.txt'), # statistics on how well the run went.
-        # done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
     run:
         from scripts.gather_albacore_results import get_albacore_results
 
@@ -100,7 +95,6 @@ rule to_tmp_dir:
             shell('mkdir -p {output}')
             shell('tar -C {output} -xf {input}')
         else:
-            print('to_tmp_dir', input, output)
             shell('mkdir -p {output}')
             shell('cp -R {input} {output}')
 
