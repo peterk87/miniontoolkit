@@ -90,13 +90,15 @@ rule to_tmp_dir:
         lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
     output:
         temp(directory(os.path.join(TMPDIR, '{fast5_dir}')))
+    resources:
+        # limit number of read directories being extracted to your temp folder at the same time
+        tmp_limit=1
     run:
         if TARRED_READS:
             shell('mkdir -p {output}')
             shell('tar -C {output} -xf {input}')
         else:
-            shell('mkdir -p {output}')
-            shell('cp -R {input} {output}')
+            shell('ln -s {input} {output}')
 
 
 onsuccess:

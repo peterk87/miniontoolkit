@@ -96,23 +96,11 @@ def get_num_reads_stats(sequencing_summary: str) -> Tuple[int, int, int]:
     :param sequencing_summary: Sequencing summary file path
     :return: Tuple of reads passed, failed and with no match
     """
+    df = pd.read_table(sequencing_summary)
 
-    num_reads_passed = 0
-    num_reads_failed = 0
-    num_no_match = 0
-    with open(sequencing_summary, "r") as fp:
-        # skip header line
-        fp.readline()
-        for line in fp:
-            if line.split("\t")[7] == "True":
-                num_reads_passed += 1
-            else:
-                num_reads_failed += 1
-
-                # also check to see if we have "no_match" set as well
-                # at the moment, looks these reads do not appear anywhere in the fastq output in either fail or pass
-                if line.split("\t")[15] == "no_match":
-                    num_no_match += 1
+    num_reads_passed = df.passes_filtering.sum()
+    num_reads_failed = df.passes_filtering.size - num_reads_passed
+    num_no_match = (df.calibration_strand_genome_template == 'no_match').sum()
 
     return num_reads_passed, num_reads_failed, num_no_match
 
