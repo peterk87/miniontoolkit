@@ -23,6 +23,7 @@ FLOWCELL = config['FLOWCELL']
 KIT = config['KIT']
 ALBACORE_VERSION = config['ALBACORE_VERSION']
 ALBACORE_THREADS = config['ALBACORE_THREADS']
+ALBACORE_OUTPUT_FORMAT = config['ALBACORE_OUTPUT_FORMAT']
 
 CLEANUP = config['CLEANUP']
 DELETE_FAILED = config['DELETE_FAILED']
@@ -77,7 +78,7 @@ if TARRED_READS:
             read_fast5_basecaller.py \
               --input {TMPDIR}/{wildcards.fast5_dir} \
               --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
-              --output_format fast5,fastq \
+              --output_format {ALBACORE_OUTPUT_FORMAT} \
               --save_path {output.dir} \
               --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
             rm -r {TMPDIR}/{wildcards.fast5_dir}
@@ -102,7 +103,7 @@ else:
             read_fast5_basecaller.py \
               --input {input} \
               --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
-              --output_format fast5,fastq \
+              --output_format {ALBACORE_OUTPUT_FORMAT} \
               --save_path {output.dir} \
               --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
             """

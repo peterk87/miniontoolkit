@@ -18,6 +18,9 @@ properties:
   ALBACORE_THREADS:
     type: integer
     minimum: 1
+  ALBACORE_OUTPUT_FORMAT:
+    type: string
+    enum: ["fastq", "fast5", "fastq,fast5"]
   INPUTDIR:
     type: string
     description: "Input directory path."
