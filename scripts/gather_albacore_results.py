@@ -39,7 +39,6 @@ def cat_fastq_files(fastq_files: List[str], output_dir: str, subdir: str) -> Non
     :param subdir:
     :return:
     """
-    combined_fastq_files = defaultdict(lambda: defaultdict(str))
     full_output_dir = os.path.join(output_dir, subdir)
     # create directory if does not already exist
     os.makedirs(full_output_dir, exist_ok=True)
@@ -48,15 +47,9 @@ def cat_fastq_files(fastq_files: List[str], output_dir: str, subdir: str) -> Non
         *_, barcode, fastq_filename = f.split(os.path.sep)
         runid = fastq_filename.split("_")[2]
 
-        with open(f, "r") as fp:
-            combined_fastq_files[barcode][runid] = fp.read()
-
-    for barcode, runids_reads in combined_fastq_files.items():
-        for runid, read in runids_reads.items():
-            fastq_path = os.path.join(full_output_dir, f'{barcode}_{runid}.fastq')
-            with open(fastq_path, "w") as fp:
-                fp.write(read)
-        logging.info(f'Combined {len(runids_reads)} for barcode="{barcode}" into a single fastq file: {fastq_path}')
+        output_fastq_path = os.path.join(full_output_dir, f'{barcode}_{runid}.fastq')
+        with open(output_fastq_path, 'a') as fh_out, open(f, "r") as fh_in:
+            fh_out.write(fh_in.read())
 
 
 def cat_sequence_summaries(input_dirs: List[str], sequencing_summary: str) -> None:

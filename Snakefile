@@ -1,6 +1,7 @@
+from typing import List, Dict
 import os
 import shutil
-from datetime import datetime
+
 from glob import glob
 
 from snakemake.utils import validate
@@ -9,32 +10,27 @@ from snakemake.utils import validate
 configfile: 'config.yaml'
 validate(config, schema='schema/config.schema.yaml')
 
-timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%s')
-
-#fetch parameters that are specifc to this minion run
 INPUTDIR = config['INPUTDIR']
 OUTPUTDIR = config['OUTPUTDIR']
 TMPDIR = config['TMPDIR']
-#TODO: add timestamp to tmp dir
-# TMPDIR = os.path.join(TMPDIR, f'{timestamp}-miniontoolkit')
 TARRED_READS = config['TARRED_READS']
-
 FLOWCELL = config['FLOWCELL']
 KIT = config['KIT']
 ALBACORE_VERSION = config['ALBACORE_VERSION']
 ALBACORE_THREADS = config['ALBACORE_THREADS']
 ALBACORE_OUTPUT_FORMAT = config['ALBACORE_OUTPUT_FORMAT']
-
 CLEANUP = config['CLEANUP']
 DELETE_FAILED = config['DELETE_FAILED']
 
-
-#directory path to Miniknow fast5 files are located
-FAST5_DIR_PATHS = [os.path.abspath(f) for f in glob(os.path.join(INPUTDIR, '*.tar'))] \
+# directory paths to Miniknow fast5 files
+FAST5_DIR_PATHS: List[str] = [os.path.abspath(f) for f in glob(os.path.join(INPUTDIR, '*.tar'))] \
     if TARRED_READS else \
     [os.path.abspath(f) for f in glob(os.path.join(INPUTDIR, '**')) if os.path.isdir(f)]
 
-FAST5_DIRS = {os.path.basename(x).replace('.tar', '') if TARRED_READS else os.path.basename(x): x for x in FAST5_DIR_PATHS}
+# dict of fast5 directory name to full fast5 directory path
+FAST5_DIRS: Dict[str, str] = {os.path.basename(x).replace('.tar', '') if TARRED_READS else os.path.basename(x): x for x in FAST5_DIR_PATHS}
+
+localrules: all
 
 rule all:
     input:
@@ -56,57 +52,45 @@ rule aggregate_results:
                              run_health=output.health,
                              deletefailed=DELETE_FAILED)
 
-if TARRED_READS:
-    rule albacore_on_tarred_reads:
-        input:
-            lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
-        output:
-            dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
-            done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
-        threads: ALBACORE_THREADS
-        benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
-        log:
-            os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
-        conda:
-            "envs/albacore-%s.yml" % (ALBACORE_VERSION)
-        version:
-            ALBACORE_VERSION
-        shell:
-            """
-            mkdir -p {TMPDIR}/{wildcards.fast5_dir}
-            tar -C {TMPDIR}/{wildcards.fast5_dir} -xf {input}
-            read_fast5_basecaller.py \
-              --input {TMPDIR}/{wildcards.fast5_dir} \
-              --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
-              --output_format {ALBACORE_OUTPUT_FORMAT} \
-              --save_path {output.dir} \
-              --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
-            rm -r {TMPDIR}/{wildcards.fast5_dir}
-            """
-else:
-    rule albacore:
-        input:
-            lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
-        output:
-            dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
-            done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
-        threads: ALBACORE_THREADS
-        benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
-        log:
-            os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
-        conda:
-            "envs/albacore-%s.yml" % (ALBACORE_VERSION)
-        version:
-            ALBACORE_VERSION
-        shell:
-            """
-            read_fast5_basecaller.py \
-              --input {input} \
-              --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
-              --output_format {ALBACORE_OUTPUT_FORMAT} \
-              --save_path {output.dir} \
-              --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
-            """
+
+rule albacore:
+    input:
+        lambda wildcards: FAST5_DIRS[wildcards.fast5_dir]
+    output:
+        dir=directory(os.path.join(OUTPUTDIR, 'albacore_results', 'results_{fast5_dir}')),
+        done=touch(os.path.join(OUTPUTDIR, 'progress', '{fast5_dir}.done'))
+    params:
+        tmp_input=lambda wildcards: os.path.join(TMPDIR, wildcards.fast5_dir)
+    threads: ALBACORE_THREADS
+    benchmark: os.path.join(OUTPUTDIR, 'benchmarks', '{fast5_dir}-albacore.tsv')
+    log:
+        os.path.join(OUTPUTDIR, 'logs', '{fast5_dir}-albacore.log')
+    conda:
+        "envs/albacore-%s.yml" % (ALBACORE_VERSION)
+    version:
+        ALBACORE_VERSION
+    shell:
+        """
+        mkdir -p {params.tmp_input}
+        tar -C {params.tmp_input} -xf {input}
+        read_fast5_basecaller.py \
+          --input {params.tmp_input} \
+          --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
+          --output_format {ALBACORE_OUTPUT_FORMAT} \
+          --save_path {output.dir} \
+          --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
+        rm -r {params.tmp_input}
+        """ \
+            if TARRED_READS else \
+        """
+        read_fast5_basecaller.py \
+          --input {input} \
+          --flowcell {FLOWCELL} --kit {KIT} --barcoding --recursive \
+          --output_format {ALBACORE_OUTPUT_FORMAT} \
+          --save_path {output.dir} \
+          --disable_pings -q 999999999 --worker_threads {threads} > {log} 2>&1
+        """
+
 
 onsuccess:
     if CLEANUP:
